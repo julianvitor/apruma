@@ -1,0 +1,492 @@
+#include <Wire.h>
+#include <WiFi.h>
+#include <WebServer.h>
+#include <MPU6050_tockn.h>
+
+const char *ssid = "ESP32_AP"; // Nome do ponto de acesso WiFi
+const char *password = "password"; // Senha do ponto de acesso WiFi
+
+WebServer server(80);
+MPU6050 mpu6050(Wire);
+
+void setup() {
+  Serial.begin(115200);
+  
+  // Configura o modo de ponto de acesso WiFi
+  WiFi.softAP(ssid, password);
+  
+  IPAddress IP = WiFi.softAPIP();
+  Serial.print("Endereço IP do ponto de acesso: ");
+  Serial.println(IP);
+
+  // Inicia a comunicação I2C
+  Wire.begin();
+
+  // Inicia o sensor MPU6050
+  mpu6050.begin();
+  
+  // Define a rota para exibir os dados do sensor
+  server.on("/sensor", HTTP_GET, []() {
+    // Lê os dados do sensor MPU6050
+    mpu6050.update();
+    float x = mpu6050.getAngleX();
+    float y = mpu6050.getAngleY();
+    float z = mpu6050.getAngleZ();
+
+    // Cria uma string com os dados do sensor
+    String sensorData = "Angulo X: " + String(x) + "<br>";
+    sensorData += "Angulo Y: " + String(y) + "<br>";
+    sensorData += "Angulo Z: " + String(z) + "<br>";
+
+    // Envia os dados para o cliente
+    server.send(200, "text/html", sensorData);
+  });
+
+  // Define a rota para exibir a página HTML
+  server.on("/", HTTP_GET, []() {
+    // Define o conteúdo da página HTML
+    String htmlContent = R"(    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="description" content="Bem-vindo ao Painel do apruma">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons&display=swap">
+        <link rel="icon" href="{{ url_for('static', filename='icon.png') }}" type="image/x-icon">
+        <style>
+            /* Estilos críticos */
+        @font-face {
+            font-family: -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Segoe UI Symbol";
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+    
+        /* Estilos de texto comuns */
+        body, h1, h2, span, div {
+            font-family: -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Segoe UI Symbol";
+        }
+    
+        /* Cabeçalho */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+    
+        /* Título principal */
+        h1 {
+            font-family: -apple-system, sans-serif;
+            font-size: 50px;
+            color: #666666;
+            margin: 0px;
+        }
+    
+        .dark-mode h1 {
+            color: #ffffff;
+            transition: background-color 0.7s ease, color 0.7s ease;
+        }
+    
+        /* Estilos do corpo da página */
+        body {
+            background-color: #9f9f9f;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Segoe UI Symbol";
+            transition: background-color 0.7s ease, color 0.s ease;
+            text-align: center;
+        }
+    
+        /* Modo escuro */
+        body.dark-mode {
+            background-color: #000000;
+            color: #ffffff;
+            transition: background-color 0.7s ease, color 0.7s ease;
+        }
+    
+        /* Padrão de transições */
+        .container, .container.dark-mode, .container.dark-mode .login-container {
+            transition: background-color 0.9s ease, color 0.9s ease, box-shadow 1s ease;
+        }
+    
+        /* Container principal */
+        .container {
+            background-color: #dddddd;
+            box-shadow: 0 0 100px 2px rgba(0, 122, 255, 0.3);
+            border-radius: 16px;
+            padding: 20px;
+            width: 100%;
+            max-width: 320px;
+        }
+    
+        /* Modo escuro para o container */
+        .container.dark-mode {
+            background-color: #222222;
+            color: #ffffff;
+        }
+    
+        .container:hover {
+            box-shadow: 0 0 200px 30px rgba(0, 122, 255, 0.3);
+        }
+    
+        .center-container {
+            margin: 10px auto;
+            top: 0px;
+        }
+    
+        /* Botão de modo escuro */
+        .dark-mode-button {
+            background-color: #333333;
+            color: #ffffff;
+            border: none;
+            border-radius: 5px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+    
+        .dark-mode-button:hover {
+            background-color: #444444;
+            box-shadow: 0 0 20px #485768;
+            transition: box-shadow 0.3s ease;
+        }
+    
+        #login-btn,
+        #cadastro-btn,
+        #cadastrar-btn {
+            background-color: #004a9c;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background-color 0.5s ease;
+            text-decoration: none;
+            display: inline-block;
+            margin-right: 0%;
+            margin-top: 0px;
+        }
+    
+        #login-btn:hover {
+            background-color: #003776;
+            box-shadow: 0 0 15px #003776;
+            transition: box-shadow 0.5s ease;
+        }
+    
+        .submit-button {
+            background-color: #ff0000;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, box-shadow 0.5s ease;
+        }
+        .submit-button:hover {
+            background-color: #ae0000;
+            box-shadow: 0 0 60px #ae0000;
+            transition: background-color 0.5s ease, box-shadow 0.5s ease;
+        }
+    
+        /* Botão de regar a planta */
+        .water-button {
+            background-color: #004a9c;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, box-shadow 0.5s ease;
+        }
+    
+        .water-plant {
+            margin-top: 20px;
+        }
+    
+        .water-button:hover {
+            background-color: #003776;
+            box-shadow: 0 0 60px #003776;
+            transition: background-color 0.5s ease, box-shadow 0.5s ease;
+        }
+    
+        /* Cabeçalho */
+        header {
+            text-align: center;
+        }
+    
+        /* Título principal */
+        h1 {
+            font-family: -apple-system, sans-serif;
+            font-size: 50px;
+            color: #666666;
+            margin: 0px;
+        }
+    
+        section {
+            margin-top: 20px;
+        }
+    
+        h2 {
+            font-size: 20px;
+            color: #666666;
+            text-align: left;
+        }
+        .dark-mode h2 {
+            color: #ffffff;
+            transition: background-color 0.7s ease, color 0.7s ease;
+        }
+        /* Itens do sensor */
+        .sensor-item {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+        }
+    
+        /* Ícones do sensor */
+        i.material-icons {
+            font-size: 24px;
+            margin-right: 10px;
+            color: #007aff;
+        }
+    
+        span {
+            font-size: 18px;
+            color: #777777;
+        }
+    
+        /* Interruptor do darkmode */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 64px;
+            height: 34px;
+            margin-right: 12px;
+            text-align: right;
+        }
+    
+        /* Alça do interruptor */
+        .switch .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #666666;
+            transition: 0.6s;
+            border-radius: 34px;
+        }
+    
+        /* Ponto de ativação do interruptor */
+        .switch .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: #fff;
+            transition: 0.6s;
+            border-radius: 50%;
+            transform: translateX(0);
+        }
+    
+        /* Interruptor ativo */
+        .switch input:checked + .slider {
+            background-color: #444444;
+        }
+    
+        /* Ponto de ativação do interruptor ativo */
+        .switch input:checked + .slider:before {
+            background-color: #fff;
+            transform: translateX(26px);
+        }
+    
+        .hidden {
+            display: none;
+        }
+    
+        /* Ícone de rotação */
+        .rotate-icon {
+            transform: rotate(180deg);
+            transition: transform 0.3s ease;
+        }
+    
+        /* Título do sensor com opção de alternância */
+        h2.sensor-toggle.da {
+            font-size: 20px;
+            color: #666666;
+            cursor: pointer;
+            position: relative;
+            transition: background-color 0.3s ease;
+            user-select: none;
+        }
+    
+        h2.sensor-toggle.dark-mode {
+            font-size: 20px;
+            color: #ffffff;
+            cursor: pointer;
+            position: relative;
+            transition: background-color 0.3s ease;
+            user-select: none;
+        }
+    
+    
+    
+    
+    
+        /* Ícone de alternância do sensor */
+        i#sensor-toggle-icon {
+            font-size: 24px;
+            margin-right: 10px;
+            color: #007aff;
+            transition: transform 0.3s ease;
+            user-select: none;
+        }
+    
+        /* Aplicar rotação ao ícone quando a classe "rotate-icon" está presente */
+        i#sensor-toggle-icon.rotate-icon {
+            transform: rotate(180deg);
+            user-select: none;
+        }
+    
+        /* Manter a lista oculta quando necessário */
+        ul#sensor-list.hidden {
+            display: none;
+        }
+    
+        /* Estilos gerais para o input */
+        input {
+            width: 70%;
+            padding: 10px;
+            margin: 8px 0;
+            box-sizing: border-box;
+            border: 1px solid #555;
+            border-radius: 5px;
+            background-color: #dddddd;
+            color: #000;
+            text-align: left; /* Alterado para alinhar à esquerda */
+        }
+    
+        /* Estilos para o modo escuro dentro do container específico */
+        .container.dark-mode input {
+            background-color: #333333;
+            color: #ffffff;
+        }
+    
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start; /* Alinhar itens à esquerda */
+            margin-bottom: 2px; /* Aumentar o espaço entre grupos de input */
+        }
+    
+        .input-group label {
+            text-align: left;
+            margin-bottom: 2px; /* Aumentar o espaço entre o rótulo e o campo de input */
+        }
+    
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #555;
+            border-radius: 5px;
+            background-color: #dddddd;
+            color: #000;
+            text-align: left;
+            margin-bottom: 2px; /* Aumentar o espaço entre campos de input */
+        }
+    
+        #time-slider {
+            width: 80%;
+    
+        }
+    
+        #selected-time {
+            margin-top: 5px;
+    
+        }
+    
+        .management-section {
+            display: block;
+            text-align: left;
+        }
+    
+        .botoes-container {
+            display: flex;
+            justify-content: space-between;  /* Para criar espaço entre os botões */
+            margin-top: 5px; 
+        }
+                /* Add styles for the typing animation */
+                .container {
+                    width: 100%;
+                }
+    
+                #title {
+                    overflow: hidden; /* Hide overflow content */
+                    border-right: 2px solid #000; /* Create a blinking cursor effect */
+                    white-space: nowrap; /* Prevent text from wrapping */
+                    margin: 0;
+                    display: inline-block; /* Allow container to resize based on content */
+                }
+                .container {
+                    background-color: #dddddd;
+                    box-shadow: 0 0 100px 2px rgba(0, 122, 255, 0.3);
+                    border-radius: 16px;
+                    padding: 20px;
+                    width: 100%;
+                    max-width: 200px
+                }
+        </style>
+    </head>
+    <body>
+        <div>
+            <div class="container center-container">
+                <header>
+                    <h1 id="title">Apruma!</h1>
+                </header>
+            </div>
+    
+            <button id="login-btn" onclick="window.location.href='/sensor'"" class="login-btn">iniciar</button>
+        </div>
+    </body>
+    </html>
+    <script>
+        // JavaScript for the typing animation
+        const title = document.getElementById('title');
+        const text = title.innerHTML;
+        title.innerText = ''; // Clear the text content
+    
+        let i = 0;
+        function typeWriter() {
+            if (i < text.length) {
+                title.innerHTML += text.charAt(i);
+                i++;
+                setTimeout(typeWriter, 300); // Adjust the typing speed (in milliseconds)
+            }
+        }
+        // Trigger the typing animation
+        typeWriter();
+    </script>
+)";
+
+    // Envia a página HTML para o cliente
+    server.send(200, "text/html", htmlContent);
+  });
+
+  // Inicia o servidor
+  server.begin();
+}
+
+void loop() {
+  // Lida com as requisições dos clientes
+  server.handleClient();
+}
