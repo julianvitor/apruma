@@ -1,0 +1,2 @@
+aceita entre -110 e -60 no y
+rejeita acima de 30 e abaixo de 5 no x
