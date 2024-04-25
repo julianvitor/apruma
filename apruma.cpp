@@ -9,6 +9,8 @@
 const char *ssid = "Apruma"; // Nome do ponto de acesso WiFi
 const char *password = "12345678"; // Senha do ponto de acesso WiFi
 
+#define LED_BUILTIN 2
+
 WebSocketsServer webSocket = WebSocketsServer(81); // Porta WebSocket
 WebServer server(80);
 MPU6050 mpu6050(Wire);
@@ -17,12 +19,24 @@ unsigned long startTime = 0; // Tempo de início da execução
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length) {
   // lidar com eventos websocket
 }
-  // Armazena o tempo de início da execução
+
+// Função para piscar a LED por 2 segundos
+void blinkForTwoSeconds() {
+  // Liga a LED
+  digitalWrite(LED_BUILTIN, HIGH);
+  delay(100); // Aguarda .1 segundo
+  
+  // Desliga a LED
+  digitalWrite(LED_BUILTIN, LOW);
+  delay(100); // Aguarda .1 segundo
+}
+
 
 // Função para salvar os dados em um arquivo TXT na memória interna
 void saveData(float x, float y, float z) {
-  // Verifica as condições fornecidas
+  // Estabele as condições de má postura
   if ((y < -110 || y > -60) || (x > 30 || x < 5)) {
+     blinkForTwoSeconds(); // pisca o led
     // Abre o arquivo em modo de escrita, se não existir, cria um novo
     File file = SPIFFS.open("/data.txt", "a");
     if (!file) {
@@ -52,6 +66,7 @@ void setup() {
   
   Serial.begin(115200);
   delay(500);
+  pinMode(LED_BUILTIN, OUTPUT);
 
   // Inicializa o sistema de arquivos SPIFFS
   if (!SPIFFS.begin()) {
@@ -528,7 +543,7 @@ void setup() {
                 </header>
             </div>
     
-            <button id="login-btn" onclick="window.location.href='/sensor'"" class="login-btn">iniciar</button>
+            <button id="login-btn" onclick="window.location.href='/dashboard'"" class="login-btn">iniciar</button>
         </div>
     </body>
     </html>
@@ -554,10 +569,9 @@ void setup() {
     server.send(200, "text/html", htmlContent);
   });
 
-  server.on("/sensor-page", HTTP_GET, []() {
+  server.on("/dashboard", HTTP_GET, []() {
     // Define o conteúdo da página HTML
-    String htmlContent = R"(<!DOCTYPE html>
-<html lang="pt-BR">
+    String htmlContent = R"(<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -566,6 +580,13 @@ void setup() {
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons&display=swap">
     <link rel="icon" href="{{ url_for('static', filename='icon.png') }}" type="image/x-icon"> 
     <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var button = document.getElementById("submit");
+            button.addEventListener("click", function() {
+                // Redireciona para a rota /relatorio
+                window.location.href = "/relatorio";
+            });
+        });
         const webSocket = new WebSocket('ws://' + window.location.hostname + ':81');
         // Quando a conexão WebSocket é aberta
         webSocket.onopen = function(event) {
@@ -1333,7 +1354,6 @@ document.addEventListener("DOMContentLoaded", () => {
     </div>
 </body>
 </html>
-
 )";
     // Envia a página HTML para o cliente
     server.send(200, "text/html", htmlContent);
